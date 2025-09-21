@@ -1,0 +1,11 @@
+[project]
+name = "arch-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "huggingface-hub>=0.35.0",
+    "nvidia-ml-py>=13.580.82",
+    "sglang[all]>=0.5.2",
+]
