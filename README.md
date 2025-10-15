@@ -1,0 +1,5 @@
+# Installation
+
+```python
+uv sync
+```

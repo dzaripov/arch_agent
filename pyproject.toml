@@ -6,6 +6,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "huggingface-hub>=0.35.0",
+    "numpy>=2.3.3",
     "nvidia-ml-py>=13.580.82",
     "sglang[all]>=0.5.2",
+]
+
+[tool.uv.workspace]
+members = [
+    "Informer2020",
 ]
