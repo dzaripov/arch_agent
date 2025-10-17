@@ -92,7 +92,6 @@ class Exp_Informer(Exp_Basic):
             freq=freq,
             cols=args.cols
         )
-        print(flag, len(data_set))
         data_loader = DataLoader(
             data_set,
             batch_size=batch_size,
@@ -103,11 +102,11 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate)
         return model_optim
     
     def _select_criterion(self):
-        criterion =  nn.MSELoss()
+        criterion = nn.MSELoss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -122,6 +121,27 @@ class Exp_Informer(Exp_Basic):
         self.model.train()
         return total_loss
 
+    def _evaluate_metrics(self, data_object, data_loader):
+        self.model.eval()
+        preds_list = []
+        trues_list = []
+        
+        with torch.no_grad():
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(data_loader):
+                pred, true = self._process_one_batch(
+                    data_object, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                
+                preds_list.append(pred.detach())
+                trues_list.append(true.detach())
+
+        all_preds = torch.cat(preds_list, dim=0)
+        all_trues = torch.cat(trues_list, dim=0)
+
+        mae, mse, rmse, mape, mspe = metric(all_preds, all_trues)
+
+        self.model.train()
+        return {'mae': mae, 'mse': mse, 'rmse': rmse, 'mape': mape, 'mspe': mspe}
+
     def train(self, setting):
         train_data, train_loader = self._get_data(flag = 'train')
         vali_data, vali_loader = self._get_data(flag = 'val')
@@ -130,8 +150,6 @@ class Exp_Informer(Exp_Basic):
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
             os.makedirs(path)
-
-        time_now = time.time()
         
         train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
@@ -142,12 +160,19 @@ class Exp_Informer(Exp_Basic):
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
 
+        epoch_log = []
+        train_loss_log = []
+        val_loss_log = []
+        test_loss_log = []
+        train_metrics_mae = []
+        val_metrics_mae = []
+        test_metrics_mae = []
+
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
             
             self.model.train()
-            epoch_time = time.time()
             for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 
@@ -157,14 +182,6 @@ class Exp_Informer(Exp_Basic):
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
                 
-                if (i+1) % 100==0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time()-time_now)/iter_count
-                    left_time = speed*((self.args.train_epochs - epoch)*train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
-                    iter_count = 0
-                    time_now = time.time()
-                
                 if self.args.use_amp:
                     scaler.scale(loss).backward()
                     scaler.step(model_optim)
@@ -173,24 +190,37 @@ class Exp_Informer(Exp_Basic):
                     loss.backward()
                     model_optim.step()
 
-            print("Epoch: {} cost time: {}".format(epoch+1, time.time()-epoch_time))
-            train_loss = np.average(train_loss)
+            avg_train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
 
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+            train_metrics = self._evaluate_metrics(train_data, train_loader)
+            val_metrics = self._evaluate_metrics(vali_data, vali_loader)
+            test_metrics = self._evaluate_metrics(test_data, test_loader)
+
+            epoch_log.append(epoch + 1)
+            train_loss_log.append(avg_train_loss.item())
+            train_metrics_mae.append(train_metrics['mae'])
+            val_loss_log.append(vali_loss.item())
+            val_metrics_mae.append(val_metrics['mae'])
+            test_loss_log.append(test_loss.item())
+            test_metrics_mae.append(test_metrics['mae'])
+
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
-                print("Early stopping")
                 break
 
             adjust_learning_rate(model_optim, epoch+1, self.args)
-            
-        best_model_path = path+'/'+'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
         
-        return self.model
+        return {
+            'epochs': epoch_log,
+            'train_loss': [round(loss, 4) for loss in train_loss_log],
+            'train_mae': [round(mae, 4) for mae in train_metrics_mae],
+            'val_loss': [round(loss, 4) for loss in val_loss_log],
+            'val_mae': [round(mae, 4) for mae in val_metrics_mae],
+            'test_loss': [round(loss, 4) for loss in test_loss_log],
+            'test_mae': [round(mae, 4) for mae in test_metrics_mae]
+        }
 
     def test(self, setting):
         test_data, test_loader = self._get_data(flag='test')
