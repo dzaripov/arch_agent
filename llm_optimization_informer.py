@@ -72,7 +72,7 @@ for i in range(ITERATIONS):
         
         function_response = function_to_call(**function_args)
 
-        print(function_response)
+        print(f'Results: {function_response}')
 
         messages.append(
             {
