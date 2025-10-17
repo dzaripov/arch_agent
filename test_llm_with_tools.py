@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # --- 1. SETUP ---
 load_dotenv()
 
-provider = 'local'
+provider = 'openrouter'
 ITERATIONS = 30
 
 if provider == 'openrouter':
@@ -15,7 +15,7 @@ if provider == 'openrouter':
         api_key=os.environ.get("OPENROUTER_API_KEY"),
     )
 
-    model = "deepseek/deepseek-chat-v3.1"
+    model = "alibaba/tongyi-deepresearch-30b-a3b:free"
 elif provider == 'local':
     client = OpenAI(
         base_url="http://0.0.0.0:30000/v1",
@@ -67,10 +67,11 @@ available_functions = {
 # --- 3. THE OPTIMIZATION LOOP ---
 
 messages = [
-    {"role": "user", "content": "Your goal is to find the values for x and y that minimize a secret loss function. "
+    {"role": "system", "content": "Your goal is to find the values for x and y that minimize a secret loss function. "
     "Start by suggesting initial values for x and y to test. Do not stop suggesting new values. "
     f"Use both exploration and exploitation methods. You have {ITERATIONS} iterations. "
-     "Values range of x and y are in [-10, 10]"}
+     "Values range of x and y are in [-10, 10]",
+     'role': 'user', 'content': 'Optimize this function'}
 ]
 
 for i in range(ITERATIONS):
