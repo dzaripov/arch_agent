@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "dotenv>=0.9.9",
     "huggingface-hub>=0.35.0",
     "numpy>=2.3.3",
     "nvidia-ml-py>=13.580.82",
+    "openai>=1.99.1",
     "sglang[all]>=0.5.2",
 ]
 
