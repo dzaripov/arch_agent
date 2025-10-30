@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+# mac
+.DS_Store
+**/.DS_Store
