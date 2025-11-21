@@ -13,6 +13,10 @@ dependencies = [
     "openai>=1.99.1",
     "optuna>=3.6.1",
     "sglang[all]>=0.5.2",
+    "optuna>=3.6.1",
+    "pandas",
+    "torch",
+    "matplotlib"
 ]
 
 [tool.uv.workspace]
