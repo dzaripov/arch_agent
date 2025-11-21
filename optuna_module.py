@@ -54,12 +54,11 @@ def suggest_informer_hyperparameters(
     space = search_space or InformerSearchSpace()
 
     seq_len = trial.suggest_categorical("seq_len", list(space.seq_len_choices))
-    label_candidates = [candidate for candidate in space.label_len_choices if candidate <= seq_len]
-    if not label_candidates:
-        raise ValueError(
-            "Label length choices do not contain any value less than or equal to the sampled seq_len."
-        )
-    label_len = trial.suggest_categorical("label_len", label_candidates)
+    label_len = trial.suggest_categorical("label_len", list(space.label_len_choices))
+    if label_len > seq_len:
+        raise optuna.TrialPruned("label_len cannot exceed seq_len")
+    pred_len = trial.suggest_categorical("pred_len", list(space.pred_len_choices))
+
     pred_len = trial.suggest_categorical("pred_len", list(space.pred_len_choices))
 
     params: Dict[str, Any] = {
