@@ -15,7 +15,8 @@ dependencies = [
     "sglang[all]>=0.5.2",
     "pandas",
     "torch",
-    "matplotlib"
+    "matplotlib",
+    "optuna-dashboard"
 ]
 
 [tool.uv.workspace]
