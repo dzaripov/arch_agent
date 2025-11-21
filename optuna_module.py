@@ -1,14 +1,4 @@
-"""Utilities for running Optuna studies on the Informer model.
 
-This module provides a light-weight interface around Optuna that mirrors the
-project description: given a callable that runs an Informer experiment and
-returns the logged metrics, the helpers below make it easy to define a search
-space, build an objective function and launch an optimisation study. The
-implementation is intentionally dependency free apart from Optuna so it can be
-unit tested without triggering a full Informer training run. When executing a
-real study, simply pass :func:`informer_tool.run_informer_experiment` as the
-``experiment_runner`` callable.
-"""
 from __future__ import annotations
 
 from collections.abc import Sequence as ABCSequence
@@ -24,63 +14,51 @@ import optuna
 from optuna import Trial
 from optuna.pruners import BasePruner, MedianPruner
 from optuna.samplers import BaseSampler, TPESampler
-
-# ---------------------------------------------------------------------------
-# Search space definition
-# ---------------------------------------------------------------------------
+from optuna.visualization import plot_contour, plot_optimization_history
+from optuna.visualization import plot_parallel_coordinate, plot_param_importances
+from optuna.visualization import plot_slice
 
 
 @dataclass(slots=True)
 class InformerSearchSpace:
-    """Container describing the Optuna search space for Informer parameters.
-
-    The choices mirror the hyper-parameter combinations used by the
-    ``Informer2020`` reference implementation bundled with this repository. This
-    keeps the optimisation grounded in configurations that are known to work
-    with :func:`informer_tool.run_informer_experiment` while still offering
-    enough diversity to explore meaningful alternatives.
-    """
-
-    seq_len_choices: Sequence[int] = (48, 96, 168, 336, 720)
-    label_len_choices: Sequence[int] = (24, 48, 96, 168, 336)
-    pred_len_choices: Sequence[int] = (24, 48, 96, 168, 336, 720)
+    seq_len_choices: Sequence[int] = (96,)
+    label_len_choices: Sequence[int] = (48,)
+    pred_len_choices: Sequence[int] = (24,)
     d_model_choices: Sequence[int] = (256, 512)
     n_heads_choices: Sequence[int] = (4, 8)
-    e_layers_choices: Sequence[int] = (2, 3)
-    d_layers_choices: Sequence[int] = (1, 2)
-    d_ff_choices: Sequence[int] = (512, 1024, 2048)
-    factor_choices: Sequence[int] = (1, 3, 5)
-    dropout: tuple[float, float] = (0.01, 0.3)
-    learning_rate: tuple[float, float] = (1e-5, 5e-4)
-    batch_size_choices: Sequence[int] = (16, 32, 64)
-    train_epochs: tuple[int, int] = (4, 20)
-    patience: tuple[int, int] = (2, 6)
-    s_layers_choices: Sequence[str] = ("3,2,1", "4,3,2")
+    e_layers_choices: Sequence[int] = (2,)
+    d_layers_choices: Sequence[int] = (1,)
+    d_ff_choices: Sequence[int] = (512, 1024)
+    factor_choices: Sequence[int] = (1, 3)
+    dropout: tuple[float, float] = (0.01, 0.1)
+    learning_rate: tuple[float, float] = (1e-5, 2e-4)
+    batch_size_choices: Sequence[int] = (16, 32)
+    train_epochs: tuple[int, int] = (4, 12)
+    patience: tuple[int, int] = (2, 4)
+    s_layers_choices: Sequence[str] = ("3,2,1",)
     attn_choices: Sequence[str] = ("prob", "full")
-    embed_choices: Sequence[str] = ("timeF", "fixed", "learned")
-    activation_choices: Sequence[str] = ("gelu", "relu")
+    embed_choices: Sequence[str] = ("timeF", "fixed")
+    activation_choices: Sequence[str] = ("gelu",)
     distil_options: Sequence[bool] = (True, False)
     output_attention_options: Sequence[bool] = (False, True)
     mix_options: Sequence[bool] = (True, False)
-    padding_options: Sequence[int] = (0, 1)
-    lradj_choices: Sequence[str] = ("type1", "type2")
+    padding_options: Sequence[int] = (0,)
+    lradj_choices: Sequence[str] = ("type1",)
 
 
 def suggest_informer_hyperparameters(
     trial: Trial,
     search_space: InformerSearchSpace | None = None,
 ) -> Dict[str, Any]:
-    """Sample a dictionary of Informer hyper-parameters using Optuna."""
 
     space = search_space or InformerSearchSpace()
 
     seq_len = trial.suggest_categorical("seq_len", list(space.seq_len_choices))
-    label_candidates = [candidate for candidate in space.label_len_choices if candidate <= seq_len]
-    if not label_candidates:
-        raise ValueError(
-            "Label length choices do not contain any value less than or equal to the sampled seq_len."
-        )
-    label_len = trial.suggest_categorical("label_len", label_candidates)
+    label_len = trial.suggest_categorical("label_len", list(space.label_len_choices))
+    if label_len > seq_len:
+        raise optuna.TrialPruned("label_len cannot exceed seq_len")
+    pred_len = trial.suggest_categorical("pred_len", list(space.pred_len_choices))
+
     pred_len = trial.suggest_categorical("pred_len", list(space.pred_len_choices))
 
     params: Dict[str, Any] = {
@@ -116,13 +94,7 @@ def suggest_informer_hyperparameters(
     return params
 
 
-# ---------------------------------------------------------------------------
-# Objective construction
-# ---------------------------------------------------------------------------
-
-
 def _extract_metric_value(metric: Any) -> float:
-    """Extract a scalar from a metric value returned by the experiment runner."""
 
     if isinstance(metric, (int, float)):
         return float(metric)
@@ -145,7 +117,6 @@ def create_objective(
     search_space: InformerSearchSpace | None = None,
     fixed_parameters: Optional[Mapping[str, Any]] = None,
 ) -> Callable[[Trial], float]:
-    """Build an Optuna objective that evaluates the Informer experiment."""
 
     fixed = dict(fixed_parameters or {})
 
@@ -161,17 +132,11 @@ def create_objective(
 
         metric_value = _extract_metric_value(result[metric])
 
-        # Store full results for later inspection.
         trial.set_user_attr("metrics", result)
 
         return -metric_value if greater_is_better else metric_value
 
     return objective
-
-
-# ---------------------------------------------------------------------------
-# Study execution helper
-# ---------------------------------------------------------------------------
 
 
 def run_study(
@@ -190,7 +155,6 @@ def run_study(
     load_if_exists: bool = True,
     **optimize_kwargs: Any,
 ) -> optuna.Study:
-    """Execute an Optuna study for the Informer model."""
 
     if n_trials <= 0:
         raise ValueError("n_trials must be a positive integer.")
@@ -223,8 +187,6 @@ def run_study(
 
 
 def _load_default_informer_experiment_runner() -> Callable[..., Mapping[str, Any]]:
-    """Import ``run_informer_experiment`` ensuring Informer2020 is importable."""
-
     try:
         from informer_tool import run_informer_experiment  # type: ignore
     except ModuleNotFoundError:
@@ -241,7 +203,7 @@ def _load_default_informer_experiment_runner() -> Callable[..., Mapping[str, Any
 
         try:
             from informer_tool import run_informer_experiment  # type: ignore
-        except ModuleNotFoundError as import_error:  # pragma: no cover - defensive branch
+        except ModuleNotFoundError as import_error:
             raise ImportError(
                 "Unable to import 'run_informer_experiment'. Ensure the Informer2020 "
                 "sources are available next to optuna_module.py."
@@ -268,8 +230,6 @@ def start_informer2020_optuna_search(
     show_progress_bar: bool = True,
     **optimize_kwargs: Any,
 ) -> optuna.Study:
-    """Convenience wrapper that launches an Informer2020 Optuna search."""
-
     if sampler is None and use_default_sampler:
         sampler = TPESampler()
     if pruner is None and use_default_pruner:
@@ -293,81 +253,6 @@ def start_informer2020_optuna_search(
         show_progress_bar=show_progress_bar,
         **optimize_kwargs,
     )
-
-
-def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run an Optuna hyper-parameter search for the Informer2020 model.",
-    )
-    parser.add_argument(
-        "--n-trials",
-        type=int,
-        default=10,
-        help="Number of Optuna trials to execute (default: 10).",
-    )
-    parser.add_argument(
-        "--metric",
-        type=str,
-        default="val_loss",
-        help="Name of the metric returned by the experiment runner to optimise.",
-    )
-    parser.add_argument(
-        "--greater-is-better",
-        action="store_true",
-        help="Flip the objective direction to maximise the chosen metric.",
-    )
-    parser.add_argument(
-        "--study-name",
-        type=str,
-        default=None,
-        help="Optional Optuna study name (useful when combined with persistent storage).",
-    )
-    parser.add_argument(
-        "--storage",
-        type=str,
-        default=None,
-        help="Optuna storage URL for persisting study results.",
-    )
-    parser.add_argument(
-        "--force-new-study",
-        action="store_true",
-        help="Do not reuse an existing study even if one with the same name exists in storage.",
-    )
-    parser.add_argument(
-        "--no-progress-bar",
-        action="store_true",
-        help="Disable Optuna's progress bar output.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Seed for the TPE sampler (ensures reproducible searches).",
-    )
-    parser.add_argument(
-        "--disable-pruner",
-        action="store_true",
-        help="Disable the default MedianPruner (run all trials to completion).",
-    )
-    parser.add_argument(
-        "--fixed-params",
-        type=json.loads,
-        default=None,
-        help="JSON object specifying hyper-parameters to keep fixed during the search.",
-    )
-    parser.add_argument(
-        "--n-jobs",
-        type=int,
-        default=1,
-        help="Number of parallel jobs to use when optimising (default: 1).",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        default=None,
-        help="Optional timeout (in seconds) for the study.",
-    )
-    return parser
 
 
 def _create_sampler(seed: Optional[int]) -> BaseSampler:
@@ -398,12 +283,7 @@ def suggest_start_informer2020_search_kwargs(
     sampler: BaseSampler | None = None,
     pruner: BasePruner | None = None,
 ) -> Dict[str, Any]:
-    """Build keyword arguments for :func:`start_informer2020_optuna_search`.
 
-    This helper mirrors the command-line interface defaults so users can easily
-    hard-code a configuration or further customise individual components in
-    their own scripts.
-    """
 
     use_default_sampler = False
     effective_sampler = sampler
@@ -457,6 +337,33 @@ def _print_study_summary(study: optuna.Study) -> None:
         print(json.dumps(metrics, indent=2))
 
 
+def save_study_visualizations(
+    study: optuna.Study,
+    *,
+    output_dir: str | Path = "optuna_plots",
+    contour_params: Sequence[str] | None = None,
+) -> list[Path]:
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    figures = {
+        "optimization_history.html": plot_optimization_history(study),
+        "param_importances.html": plot_param_importances(study),
+        "parallel_coordinate.html": plot_parallel_coordinate(study),
+        "contour.html": plot_contour(study, params=list(contour_params) if contour_params else None),
+        "slice.html": plot_slice(study),
+    }
+
+    saved_paths: list[Path] = []
+    for filename, figure in figures.items():
+        file_path = output_path / filename
+        figure.write_html(file_path, include_plotlyjs="cdn")
+        saved_paths.append(file_path)
+
+    return saved_paths
+
+
 def main() -> None:
     parser = _build_arg_parser()
     args = parser.parse_args()
@@ -507,4 +414,5 @@ __all__ = [
     "run_study",
     "start_informer2020_optuna_search",
     "suggest_start_informer2020_search_kwargs",
+    "save_study_visualizations",
 ]
