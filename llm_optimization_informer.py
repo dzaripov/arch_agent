@@ -118,11 +118,22 @@ available_functions = {
 # --- 3. THE OPTIMIZATION LOOP ---
 
 messages = [
-    {"role": "user", "content": "Your goal is to find best hyperparameter values for Informer model. "
-    "You have a fucntions that runs a long sequence time-series forecasting experiment using the Informer model. "
-    "Start by suggesting initial values for x and y to test. Do not stop suggesting new values. "
+    {"role": "user", "content": "Your goal is to find the best hyperparameter values for the Informer model to minimize MSE on the ETDataset (Electricity Transformer Dataset) for time-series forecasting task.\n**DATASET DETAILS** The dataset columns include information on the date (recorded date), HUFL (High UseFul Load), HULL (High UseLess Load), MUFL (Middle UseFul Load), MULL (Middle UseLess Load), LUFL (Low UseFul Load), LULL (Low UseLess Load), and a target column OT (Oil Temperature). "
+    "You have a function that runs a long sequence time-series forecasting experiment using the Informer model. "
+    # "Start by suggesting initial values for x and y to test. Do not stop suggesting new values. "
+    # Аналогично оптуне:
+    "Start by suggesting initial values for x and y to test. Do not stop suggesting new values. Here's the range of hyperparameters for reference, but you can use any values in between these ranges: seq_len_choices: Sequence[int] = (48, 96, 168, 336, 720); label_len_choices: Sequence[int] = (24, 48, 96, 168, 336); pred_len_choices: Sequence[int] = (24, 48, 96, 168, 336, 720); d_model_choices: Sequence[int] = (256, 512); n_heads_choices: Sequence[int] = (4, 8); e_layers_choices: Sequence[int] = (2, 3); d_layers_choices: Sequence[int] = (1, 2); d_ff_choices: Sequence[int] = (512, 1024, 2048); factor_choices: Sequence[int] = (1, 3, 5); dropout: tuple[float, float] = (0.01, 0.3); learning_rate: tuple[float, float] = (1e-5, 5e-4); batch_size_choices: Sequence[int] = (16, 32, 64); train_epochs: tuple[int, int] = (4, 20); patience: tuple[int, int] = (2, 6); s_layers_choices: Sequence[str] = ('3,2,1', '4,3,2'); attn_choices: Sequence[str] = ('prob', 'full'); embed_choices: Sequence[str] = ('timeF', 'fixed', 'learned'); activation_choices: Sequence[str] = ('gelu', 'relu'); distil_options: Sequence[bool] = (True, False); output_attention_options: Sequence[bool] = (False, True); mix_options: Sequence[bool] = (True, False); padding_options: Sequence[int] = (0, 1); lradj_choices: Sequence[str] = ('type1', 'type2')"
     f"Use both exploration and exploitation methods. You have {ITERATIONS} iterations. "}
 ]
+
+
+# Альтернатива
+# messages = [
+#     {"role": "user", "content": "Your goal is to find the best hyperparameter values for the Informer model to minimize MSE on the ETDataset (Electricity Transformer Dataset) for time-series forecasting task.\n**DATASET DETAILS** The dataset columns include information on the date (recorded date), HUFL (High UseFul Load), HULL (High UseLess Load), MUFL (Middle UseFul Load), MULL (Middle UseLess Load), LUFL (Low UseFul Load), LULL (Low UseLess Load), and a target column OT (Oil Temperature). "
+#     "You have a function that runs a long sequence time-series forecasting experiment using the Informer model. "
+#     "Start by suggesting initial values for x and y to test. Do not stop suggesting new values. **Hyperparameters** you may want to consider optimizing: learning_rate in range from 0.00001 to 0.01, explore both lower and higher values; number of encoder layers (e_layers) in range from 1 to 6, more layers = more capacity but longer training; any other hyperparameters listed in informer_tools. **SEARCH GUIDELINES:** - Typical good learning rates for Informer: 0.00005, 0.0001, 0.0005, 0.001; - Encoder layers: 1-4 often work well for this dataset size; - If MSE > 1.0: try different regions (learning rate too high/low, layers inappropriate); - If MSE < 0.3: fine-tune around current values; - Consider training time vs performance trade-off. "
+#     f"Use both exploration and exploitation methods. You have {ITERATIONS} iterations. "}
+# ]
 
 for i in range(ITERATIONS):
     try:
