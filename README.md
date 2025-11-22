@@ -14,7 +14,8 @@ uv sync
 - Informer2020 - модифицированный исходный код модели и датасет
 - informer_tool.py - тул в формате OpenAI для вызова модели со всеми гиперпараметрами
 - llm_optimization_informer.py - запуск ллм с тулом, идет оптимизация
-- llm_optimization_informer_updated.py - запуск ллм с тулом с измененным промптом и логированием
+- llm_optimization_informer_logs.py - запуск ллм с тулом с логированием
+- llm_optimization_informer_updated.py - запуск ллм с тулом с измененным промптом, логированием и формированием дашборда
 - [logs_history.log] - логи подбора через ллм
 - [optuna_llm_logs.db] - дашборд Optuna
 - test_llm_with_tools.py - тестовый пример запуска легкой оптимизации функции `(x-3)**2 + (y-5)**2`
@@ -25,7 +26,26 @@ uv sync
 
 ## Пример запуска
 
+```python
 uv sync
-python llm_optimization_informer.py
+python llm_optimization_informer_updated.py
+```
 
-Не забудьте добавить свой ключ `OPENROUTER_API_KEY` в файл `.env` корневой папки
+Не забудьте добавить свой ключ `OPENROUTER_API_KEY` в файл `.env` корневой папки.
+
+## Результат
+
+| Dataset  | Method   | MSE      | Best Parameters |
+|----------|----------|----------|-----------------|
+| ETTh1    | LLM      | 0.623    | {'d_model': 512, 's_layers': '3,2,1', 'mix': True, 'embed': 'timeF', 'n_heads': 4, 'patience': 3, 'factor': 3, 'padding': 0, 'e_layers': 2, 'distil': True, 'lradj': 'type1', 'activation': 'relu', 'attn': 'full', 'output_attention': False, 'seq_len': 96, 'label_len': 48, 'd_layers': 2, 'd_ff': 2048, 'dropout': 0.05, 'learning_rate': 0.0001, 'pred_len': 24} |
+| ETTh1    | Optuna   | 0.625   | {'d_model': 512, 's_layers': '3,2,1', 'mix': True, 'embed': 'timeF', 'n_heads': 4, 'patience': 3, 'factor': 3, 'padding': 0, 'e_layers': 2, 'distil': True, 'lradj': 'type1', 'activation': 'relu', 'attn': 'full', 'output_attention': False, 'seq_len': 96, 'label_len': 48, 'd_layers': 2, 'd_ff': 2048, 'dropout': 0.05, 'learning_rate': 0.0001, 'pred_len': 24} |
+| ETTh2    | LLM      | 0.314   | {'d_model': 512, 's_layers': '3,2,1', 'mix': True, 'embed': 'timeF', 'n_heads': 4, 'patience': 3, 'factor': 3, 'padding': 0, 'e_layers': 2, 'distil': True, 'lradj': 'type1', 'activation': 'relu', 'attn': 'full', 'output_attention': False, 'seq_len': 96, 'label_len': 48, 'd_layers': 2, 'd_ff': 2048, 'dropout': 0.05, 'learning_rate': 0.0001, 'pred_len': 24} |
+| ETTh2    | Optuna   | 0.316   | {'d_model': 512, 's_layers': '3,2,1', 'mix': True, 'embed': 'timeF', 'n_heads': 4, 'patience': 3, 'factor': 3, 'padding': 0, 'e_layers': 2, 'distil': True, 'lradj': 'type1', 'activation': 'relu', 'attn': 'full', 'output_attention': False, 'seq_len': 96, 'label_len': 48, 'd_layers': 2, 'd_ff': 2048, 'dropout': 0.05, 'learning_rate': 0.0001, 'pred_len': 24} |
+
+## Сравнение методов на простой задаче
+
+![Image alt](comparison.png)
+
+## Вывод
+
+Хоть метрики получаются схожими у обоих методов, LLM быстрее и порой эффективнее ищет архитектуру.
