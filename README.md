@@ -38,7 +38,7 @@ python llm_optimization_informer_updated.py
 | Dataset  | Method   | MSE      | Best Parameters |
 |----------|----------|----------|-----------------|
 | ETTh1    | LLM      | 0.623    | {'d_model': 512, 's_layers': '3,2,1', 'mix': True, 'embed': 'timeF', 'n_heads': 4, 'patience': 3, 'factor': 3, 'padding': 0, 'e_layers': 2, 'distil': True, 'lradj': 'type1', 'activation': 'relu', 'attn': 'full', 'output_attention': False, 'seq_len': 96, 'label_len': 48, 'd_layers': 2, 'd_ff': 2048, 'dropout': 0.05, 'learning_rate': 0.0001, 'pred_len': 24} |
-| ETTh1    | Optuna   | 0.763    | {'seq_len': 96, 'label_len': 96, 'pred_len': 24, 'd_model': 512, 'n_heads': 8, 'e_layers': 2, 'd_layers': 1, 'd_ff': 512, 'factor': 1, 'dropout': 0.03528410587186427, 'learning_rate': 3.701703986141383e-05, 'batch_size': 32, 'train_epochs': 4, 'patience': 4, 's_layers': '3,2,1', 'attn': 'prob', 'embed': 'fixed', 'activation': 'gelu', 'distil': False, 'output_attention': False, 'mix': True, 'padding': 0, 'lradj': 'type1'} |
+| ETTh1    | Optuna   | 0.730    | {'seq_len': 192, 'label_len': 96, 'pred_len': 24, 'd_model': 256, 'n_heads': 4, 'e_layers': 2, 'd_layers': 1, 'd_ff': 512, 'factor': 1, 'dropout': 0.01043092718503892, 'learning_rate': 2.657385677161264e-05, 'batch_size': 16, 'train_epochs': 6, 'patience': 4, 's_layers': '3,2,1', 'attn': 'full', 'embed': 'fixed', 'activation': 'gelu', 'distil': True, 'output_attention': False, 'mix': True, 'padding': 0, 'lradj': 'type1'} |
 
 ## Сравнение методов на простой задаче
 
