@@ -16,7 +16,7 @@ dependencies = [
     "pandas",
     "torch",
     "matplotlib",
-    "optuna-dashboard"
+    "optuna-dashboard",
 ]
 
 [tool.uv.workspace]
