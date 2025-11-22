@@ -180,6 +180,8 @@ def run_informer_experiment(
     embed: str = "timeF",
     activation: str = "gelu",
     output_attention: bool = False,
+    batch_size: int = 32,
+    train_epochs: int = 4,
     mix: bool = True,
     patience: int = 3,
     learning_rate: float = 0.0001,
