@@ -18,8 +18,8 @@ informer_tools = [
                 "properties": {
                     "seq_len": {
                         "type": "integer",
-                        "description": "Input sequence length for the Informer encoder. Default is 96.",
-                        "default": 96,
+                        "description": "Input sequence length for the Informer encoder. Default is 48.",
+                        "default": 48,
                     },
                     "label_len": {
                         "type": "integer",
@@ -109,16 +109,6 @@ informer_tools = [
                         "description": "Whether to use mix attention in the generative decoder. Default is True.",
                         "default": True,
                     },
-                    "train_epochs": {
-                        "type": "integer",
-                        "description": "Number of training epochs. Default is 6.",
-                        "default": 6,
-                    },
-                    "batch_size": {
-                        "type": "integer",
-                        "description": "Batch size for training input data. Default is 32.",
-                        "default": 32,
-                    },
                     "patience": {
                         "type": "integer",
                         "description": "Patience for early stopping. Default is 3.",
@@ -132,11 +122,33 @@ informer_tools = [
                     "lradj": {
                         "type": "string",
                         "description": "Learning rate adjustment strategy. Default is 'type1'.",
-                        "enum": ['type1', 'type2'],
+                        "enum": ["type1", "type2"],
                         "default": "type1",
                     },
                 },
-                "required": [], 
+                "required": [
+                    "seq_len",
+                    "label_len",
+                    "pred_len",
+                    "d_model",
+                    "n_heads",
+                    "e_layers",
+                    "d_layers",
+                    "s_layers",
+                    "d_ff",
+                    "factor",
+                    "padding",
+                    "distil",
+                    "dropout",
+                    "attn",
+                    "embed",
+                    "activation",
+                    "output_attention",
+                    "mix",
+                    "patience",
+                    "learning_rate",
+                    "lradj",
+                ],
             },
         },
     }
@@ -145,7 +157,6 @@ informer_tools = [
 import argparse
 import os
 import torch
-import numpy as np
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -170,8 +181,6 @@ def run_informer_experiment(
     activation: str = "gelu",
     output_attention: bool = False,
     mix: bool = True,
-    train_epochs: int = 6,
-    batch_size: int = 32,
     patience: int = 3,
     learning_rate: float = 0.0001,
     lradj: str = "type1",
@@ -218,8 +227,8 @@ def run_informer_experiment(
     # train_epochs = 1
 
     # not hyperparameters
-    model = 'informer'
-    data = 'ETTh1'
+    model = "informer"
+    data = "ETTh1"
     root_path = "./Informer2020/data/ETT/"
     features = "M"
     freq = "h"
@@ -235,11 +244,10 @@ def run_informer_experiment(
     itr = 1
     num_workers = 0
     des = "run"
-    loss = 'mse' # the only loss in the code
+    loss = "mse"  # the only loss in the code
+    train_epochs = 4
+    batch_size = 32
 
-
-
-    
     # Assign all function parameters to the args object
     args.model, args.data, args.root_path, args.features, args.freq = (
         model,
@@ -408,11 +416,13 @@ def run_informer_experiment(
 
         torch.cuda.empty_cache()
 
-    return {'epochs': res["epochs"],
-            'train_loss': res["train_loss"],
-            'train_mae': res['train_mae'],
-            'val_loss': res["val_loss"],
-            'val_mae': res['val_mae']}
+    return {
+        "epochs": res["epochs"],
+        "train_loss": res["train_loss"],
+        "train_mae": res["train_mae"],
+        "val_loss": res["val_loss"],
+        "val_mae": res["val_mae"],
+    }
 
 
 # Example of how to call the function
